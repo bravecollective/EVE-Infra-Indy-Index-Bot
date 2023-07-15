@@ -11,7 +11,7 @@
   ],
   "webhooks":
   {
-    "slack": false,
+    "slack": true,
     "discord": false
   },
   "display_threshold": 0.01
