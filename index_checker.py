@@ -43,22 +43,21 @@ def parseIndicesBySystemList (index_response, alliance_systems):
     return indices_list
 
 def buildOutputString (indices_list):
-    outputString = 'Manufacturing Cost Index Report: ```'
-
+    outputString = "Manufacturing Cost Index Report:\n```\n"
+​
     for system in indices_list[0]:
         system[1] = indexFormatter(system[1])
-
+​
         outputString += ('{0:7} {1:>8}'.format(*system)) + "\n"
-
-    outputString += "``` \n"
-    outputString += 'Reaction Cost Index Report: ```'
-
+​
+    outputString += "```\nReaction Cost Index Report:\n```\n"
+​
     for system in indices_list[1]:
         system[1] = indexFormatter(system[1])
-
+​
         outputString += ('{0:7} {1:>8}'.format(*system)) + "\n"
     outputString += "```"
-
+​
     return outputString
 
 def filterByRegions (alliance_systems):
