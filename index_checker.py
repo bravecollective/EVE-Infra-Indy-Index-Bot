@@ -28,10 +28,8 @@ def parseIndicesBySystemList(index_response, alliance_systems):
         for system in alliance_systems:
             # If the systems match (cost index pertains to a system on the alliance_systems list
             if cost_index['solar_system_id'] == system['id']:
-
                 if cost_index['cost_indices'][0]['cost_index'] > configuration['display_threshold']:
                     indices_list[0].append([system['name'], cost_index['cost_indices'][0]['cost_index']])
-
                 if cost_index['cost_indices'][5]['cost_index'] > configuration['display_threshold']:
                     indices_list[1].append([system['name'], cost_index['cost_indices'][5]['cost_index']])
 
@@ -49,7 +47,7 @@ def buildOutputString(indices_list):
     outputString = "Manufacturing Cost Index Report:\n```\n"
 
     if not indices_list[0]:
-        outputString += "No infrastructure hubs found.\n"
+        outputString += "Nothing to report.\n"
 
     for system in indices_list[0]:
         system[1] = indexFormatter(system[1])
@@ -58,7 +56,7 @@ def buildOutputString(indices_list):
     outputString += "```\nReaction Cost Index Report:\n```\n"
 
     if not indices_list[1]:
-        outputString += "No infrastructure hubs found.\n"
+        outputString += "Nothing to report.\n"
 
     for system in indices_list[1]:
         system[1] = indexFormatter(system[1])
@@ -111,8 +109,10 @@ def GetIndices(alliance_IDs):
     alliance_systems = []
 
     for system in sov_response:
-        if system['alliance_id'] in alliance_IDs and system['structure_type_id'] == 32458:
-            alliance_systems.append(system['solar_system_id'])
+        if system['alliance_id'] in alliance_IDs and (system['structure_type_id'] == 32458 or
+                                                      system['structure_type_id'] == 32226):
+            if system['solar_system_id'] not in alliance_systems:
+                alliance_systems.append(system['solar_system_id'])
 
     resolve_system_name_url = 'https://esi.evetech.net/latest/universe/names/'
     alliance_systems = requests.post(resolve_system_name_url,
