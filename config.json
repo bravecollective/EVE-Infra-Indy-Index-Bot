@@ -14,5 +14,14 @@
     "slack": true,
     "discord": false
   },
+  "enabled_indices": {
+    "manufacturing": true,
+    "reaction": true,
+    "researching_material_efficiency": false,
+    "researching_time_efficiency": false,
+    "invention": false,
+    "copying": false
+  },
+  "verbose": true,
   "display_threshold": 0.01
 }

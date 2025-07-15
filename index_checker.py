@@ -18,53 +18,60 @@ import json
 def indexFormatter(index):
     return f"{index:.2%}"
 
+# Helper filter function to get the correct array index for the cost
+def is_activity(what):
+    return lambda x: x['activity'] == what
 
-def parseIndicesBySystemList(index_response, alliance_systems):
-    indices_list = [[], []]
+def parseIndicesBySystemList(index_response, alliance_systems, config = None):
+    indices_list = {}
+    if config and len(config) > 0:
+        for k in config.keys():
+            indices_list[k] = []
+
     # Reads through all indexes returned by ESI
-
     for cost_index in index_response:
         # Then checks the list of system IDs in the alliance systems list, to see if it's on the list
         for system in alliance_systems:
             # If the systems match (cost index pertains to a system on the alliance_systems list
             if cost_index['solar_system_id'] == system['id']:
-                if cost_index['cost_indices'][0]['cost_index'] > configuration['display_threshold']:
-                    indices_list[0].append([system['name'], cost_index['cost_indices'][0]['cost_index']])
-                if cost_index['cost_indices'][5]['cost_index'] > configuration['display_threshold']:
-                    indices_list[1].append([system['name'], cost_index['cost_indices'][5]['cost_index']])
+                ci = cost_index['cost_indices']
+                for k in config.keys():
+                    cix = list(filter(is_activity(k), ci))
+                    if cix and cix[0]['cost_index'] > configuration['display_threshold']:
+                        indices_list[k].append([system['name'], cix[0]['cost_index']])
 
     # sorts the data
-    indices_list[0].sort(key=lambda x: x[1])
-    indices_list[0].reverse()
-
-    indices_list[1].sort(key=lambda x: x[1])
-    indices_list[1].reverse()
+    for k in indices_list.keys():
+        indices_list[k].sort(key=lambda x: x[1])
+        indices_list[k].reverse()
 
     return indices_list
 
 
-def buildOutputString(indices_list):
-    outputString = "\nManufacturing Cost Index Report:\n\n```\n"
+def buildOutputString(indices_list, config = None):
+    outputString = ""
 
-    if not indices_list[0]:
-        outputString += "Nothing to report.\n"
+    first = True
+    for i in config.keys():
+        if not config[i]['enabled']:
+            continue
 
-    for system in indices_list[0]:
-        system[1] = indexFormatter(system[1])
-        outputString += ('{0:7} {1:>8}'.format(*system)) + "\n"
+        if first:
+            outputString += "\n"
+            first = False
+        outputString += "{} Cost Index Report:\n\n```\n".format(config[i]['display_name'])
 
-    outputString += "```\n\nReaction Cost Index Report:\n\n```\n"
+        if not indices_list[i]:
+            outputString += "Nothing to report.\n"
+            continue
 
-    if not indices_list[1]:
-        outputString += "Nothing to report.\n"
+        for system in indices_list[i]:
+            system[1] = indexFormatter(system[1])
+            outputString += ('{0:7} {1:>8}'.format(*system)) + "\n"
 
-    for system in indices_list[1]:
-        system[1] = indexFormatter(system[1])
-        outputString += ('{0:7} {1:>8}'.format(*system)) + "\n"
+        outputString += "```\n\n"
 
-    outputString += "```"
-
-    return outputString
+    return outputString.rstrip()
 
 
 def filterByRegions(alliance_systems):
@@ -124,9 +131,28 @@ def GetIndices(alliance_IDs):
 
     index_response = requests.get(indices_url).json()
 
-    system_indices_list = parseIndicesBySystemList(index_response, alliance_systems)
+    # Determine which indices to display and how they should be called here
+    config_idx = {}
+    if 'enabled_indices' in configuration:
+        config_enabled = configuration['enabled_indices']
+        config_display = {
+            'manufacturing': "Manufacturing",
+            'reaction': "Reaction",
+            'researching_material_efficiency': "ME Research",
+            'researching_time_efficiency': "TE Research",
+            'invention': "Invention",
+            'copying': "Copying"
+        }
+        for k in config_display.keys():
+            if k in config_enabled:
+                config_enabled[k] = { 'enabled': config_enabled[k] }
+            else:
+                config_enabled[k] = { 'enabled' : false }
+            config_enabled[k]['display_name'] = config_display[k]
+        config_idx = config_enabled
 
-    output_string = buildOutputString(system_indices_list)
+    system_indices_list = parseIndicesBySystemList(index_response, alliance_systems, config_idx)
+    output_string = buildOutputString(system_indices_list, config_idx)
 
     # if the config file is true for slack
     if configuration['webhooks']['slack']:
@@ -136,12 +162,16 @@ def GetIndices(alliance_IDs):
     if configuration['webhooks']['discord']:
         postDiscordWebhook(output_string)
 
+    if 'verbose' in configuration and configuration['verbose']:
+        print(output_string)
 
-# opens config file
-configFile = open("./config.json")
 
-# returns JSON object as a dictionary
-configuration = json.load(configFile)
+if __name__ == "__main__":
+    # opens config file
+    configFile = open("./config.json")
 
-# Calls the function to fetch, and send, the indexes
-GetIndices(configuration["alliance_IDs"])
+    # returns JSON object as a dictionary
+    configuration = json.load(configFile)
+
+    # Calls the function to fetch, and send, the indexes
+    GetIndices(configuration["alliance_IDs"])
